@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Interview integration checks</title>
+  </head>
+  <body>
+    <h1>Проверка контракта interview</h1>
+    <button id="run">Проверить жизненный цикл</button>
+    <button id="production">Проверить production-модуль</button>
+    <button id="mobile">Мобильный экран 375px</button>
+    <button id="desktop">Макет 819px</button>
+    <pre id="result" role="status">Готово к проверке</pre>
+    <div id="fixture"></div>
+    <script type="module" src="/tests/browser.ts"></script>
+  </body>
+</html>
