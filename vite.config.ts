@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
     ignorePatterns: [
       'dist/**',
       'dist-demo/**',
+      'dist-nano/**',
       'node_modules/**',
       'coverage/**',
       '.vite-plus/**',
@@ -189,6 +190,7 @@ export default defineConfig(({ mode }) => ({
       'node_modules/',
       'dist/',
       'dist-demo/',
+      'dist-nano/',
       'dist-ssr/',
       'vendor/',
       'package-lock.json',
@@ -229,12 +231,16 @@ export default defineConfig(({ mode }) => ({
       ? { outDir: 'dist-demo' }
       : {
           lib: {
-            entry: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
-            formats: ['es'],
+            entry: fileURLToPath(
+              new URL(mode === 'brojs' ? './src/brojs.ts' : './src/index.ts', import.meta.url),
+            ),
+            name: 'SkillSprintInterview',
+            formats: mode === 'brojs' ? ['umd'] : ['es'],
             fileName: () => 'index.js',
           },
-          // Vue and all runtime dependencies are included for native browser import().
-          outDir: 'dist',
+          // Both loaders receive a self-contained bundle, including Vue and runtime dependencies.
+          outDir: mode === 'brojs' ? 'dist' : 'dist-nano',
           copyPublicDir: false,
+          rolldownOptions: { output: { exports: 'named' } },
         },
 }))

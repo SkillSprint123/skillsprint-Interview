@@ -18,10 +18,12 @@
     "test:watch": "vp test watch",
     "test:coverage": "vp test run --coverage",
     "build": "npm run build:prod",
-    "build:prod": "npm run typecheck && vp build",
+    "build:prod": "npm run typecheck && vp build --mode brojs",
+    "build:brojs": "npm run build:prod",
+    "build:nano": "npm run typecheck && vp build",
     "build:demo": "npm run typecheck && vp build --mode demo",
     "preview": "vp preview --outDir dist-demo",
-    "verify": "npm run check && npm run test:coverage && npm run build:prod && npm run build:demo"
+    "verify": "npm run check && npm run test:coverage && npm run build:prod && node scripts/check-brojs-build.mjs && npm run build:nano && npm run build:demo"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

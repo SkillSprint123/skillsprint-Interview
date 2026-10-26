@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 dist-demo
+dist-nano
 coverage/
 .vite-plus/
 .vitest/

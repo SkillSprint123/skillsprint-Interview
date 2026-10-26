@@ -189,7 +189,7 @@ document.querySelector('#run')!.addEventListener('click', () => {
 })
 document.querySelector('#production')!.addEventListener('click', async () => {
   try {
-    const entry = `/dist/index.js?check=${Date.now()}`
+    const entry = `/dist-nano/index.js?check=${Date.now()}`
     const module: unknown = await import(/* @vite-ignore */ entry)
     assertNanoModule(module)
     await runLifecycle(module)
