@@ -109,7 +109,7 @@ async function runLifecycle(module: NanoModule) {
     const secondAnswer = second.querySelector('textarea')!
     check(firstAnswer.id !== secondAnswer.id, 'Instance IDs must be unique')
     const icons = first.querySelectorAll('svg[aria-hidden="true"]')
-    check(icons.length === 3, 'The header, streak and send button must render icons')
+    check(icons.length === 2, 'The interviewer and send button must render icons')
     for (const icon of icons) {
       const bounds = icon.getBoundingClientRect()
       const parent = icon.parentElement!.getBoundingClientRect()

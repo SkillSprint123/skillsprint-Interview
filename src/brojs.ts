@@ -1,5 +1,5 @@
 import InterviewPage from './pages/interview/InterviewPage.vue'
-import { mount as mountNano } from './index'
+import { mountInterview as mountNano } from './app/mount'
 
 // BroJS calls mount(component.default, element, { push }) and a separate unmount().
 export default InterviewPage
@@ -14,12 +14,16 @@ export function mount(
   if (!element) throw new Error('SkillSprint Interview: контейнер подключения не найден')
   if (typeof push !== 'function') throw new Error('SkillSprint Interview: нужен BroJS push')
   unmount()
-  instance = mountNano(element, {
-    basePath: '/interview',
-    apiBaseUrl: '/api',
-    user: null,
-    navigate: (path) => push(path),
-  })
+  instance = mountNano(
+    element,
+    {
+      basePath: '/interview',
+      apiBaseUrl: '/api',
+      user: null,
+      navigate: (path) => push(path),
+    },
+    true,
+  )
 }
 
 export function unmount() {

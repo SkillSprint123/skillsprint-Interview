@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vite-plus/tes
 import { nextTick } from 'vue'
 import type { NanoContext } from '@skillsprint/contracts'
 import { contractVersion, mount } from '../src/index'
+import { mountInterview } from '../src/app/mount'
 
 const context: NanoContext = {
   basePath: '/interview',
@@ -41,9 +42,9 @@ async function flushUi() {
   await nextTick()
 }
 
-function render(target = document.createElement('div')) {
+function render(target = document.createElement('div'), standalone = false) {
   document.body.append(target)
-  const instance = mount(target, context)
+  const instance = standalone ? mountInterview(target, context, true) : mount(target, context)
   instances.push(instance)
   return { target, instance }
 }
@@ -83,6 +84,17 @@ async function reviewAnswer(target: HTMLElement, answer = 'Функция сох
 }
 
 describe('the mounted interview', () => {
+  test('leaves shell chrome to the host when mounted as a nano', () => {
+    const { target } = render()
+    expect(target.querySelector('main')).toBeNull()
+    expect(target.querySelectorAll('h1')).toHaveLength(1)
+    expect(target.textContent).not.toContain('Репетиция собеседования')
+    expect(target.textContent).not.toContain('Серия:')
+    expect(target.textContent).not.toContain('Практикуйся в своём темпе.')
+    expect(target.textContent).toContain('Ответы не отправляются на сервер.')
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   test('publishes the v1 contract and keeps shell content on repeated unmount', async () => {
     expect(contractVersion).toBe(1)
     const host = document.createElement('div')
@@ -232,7 +244,7 @@ describe('the mounted interview', () => {
 describe('the live header date', () => {
   test('changes at local midnight without reloading the interview', async () => {
     vi.setSystemTime(new Date(2026, 9, 24, 23, 59, 59, 900))
-    const { target } = render()
+    const { target } = render(undefined, true)
     typeAnswer(target, 'Черновик ответа')
     expect(target.textContent).toContain('Суббота, 24 октября')
     expect(target.textContent).toContain('Серия: —')
@@ -243,7 +255,7 @@ describe('the live header date', () => {
   })
 
   test('refreshes on tab return and removes listeners and timers on unmount', async () => {
-    const { target, instance } = render()
+    const { target, instance } = render(undefined, true)
     expect(vi.getTimerCount()).toBe(1)
     vi.setSystemTime(new Date(2026, 9, 26, 12))
     window.dispatchEvent(new Event('focus'))

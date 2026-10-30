@@ -2,7 +2,7 @@ import type { CssFunction } from '../../app/types'
 import { tokens as t } from '../../shared/styles/tokens'
 import { registerFonts } from '../../shared/styles/fonts'
 
-export function createStyles(css: CssFunction) {
+export function createStyles(css: CssFunction, standalone: boolean) {
   registerFonts(css)
   const button = {
     display: 'inline-flex',
@@ -27,9 +27,9 @@ export function createStyles(css: CssFunction) {
     page: css({
       width: '100%',
       minWidth: 0,
-      minHeight: '100svh',
-      padding: '30px',
-      background: t.background,
+      minHeight: standalone ? '100svh' : 0,
+      padding: standalone ? '30px' : 0,
+      background: standalone ? t.background : 'transparent',
       color: t.ink,
       fontFamily: t.font,
       fontSize: '12px',
@@ -39,9 +39,9 @@ export function createStyles(css: CssFunction) {
       '& :where(h1, h2, h3, p)': { margin: 0 },
       '& button, & textarea': { fontFamily: 'inherit' },
       overflowWrap: 'anywhere',
-      '@container (max-width: 600px)': { padding: '18px 12px 24px' },
+      '@container (max-width: 600px)': { padding: standalone ? '18px 12px 24px' : 0 },
     }),
-    content: css({ width: '100%', maxWidth: '1200px', margin: '0 auto' }),
+    content: css({ width: '100%', maxWidth: standalone ? '1200px' : 'none', margin: '0 auto' }),
     topbar: css({
       display: 'flex',
       alignItems: 'center',
@@ -67,13 +67,13 @@ export function createStyles(css: CssFunction) {
     }),
     icon: css({ display: 'block', flexShrink: 0 }),
     heading: css({
-      marginTop: '30px',
+      marginTop: standalone ? '30px' : 0,
       marginBottom: '24px',
       '& h1': { fontSize: '25.5px', lineHeight: '33px', fontWeight: 600, letterSpacing: '-0.45px' },
       '& p': { marginTop: '9px', fontSize: '12px', lineHeight: '19.5px', color: t.muted },
       '@container (max-width: 600px)': {
         '& h1': { fontSize: '21px', lineHeight: '27px' },
-        marginTop: '24px',
+        marginTop: standalone ? '24px' : 0,
         marginBottom: '18px',
       },
     }),
