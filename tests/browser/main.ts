@@ -1,6 +1,6 @@
 import { assertNanoInstance, assertNanoModule } from '@skillsprint/contracts'
 import type { NanoContext, NanoInstance, NanoModule } from '@skillsprint/contracts'
-import * as nano from '../src/index'
+import * as nano from '../../src/index'
 import { css } from 'goober'
 
 const fixture = document.querySelector<HTMLDivElement>('#fixture')!

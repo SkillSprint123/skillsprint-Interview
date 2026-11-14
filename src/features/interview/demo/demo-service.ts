@@ -1,5 +1,5 @@
-import { answerSchema, feedbackSchema } from './schemas.ts'
-import type { Feedback, Question } from './types.ts'
+import { answerSchema, feedbackSchema } from '../model/schemas.ts'
+import type { Feedback, Question } from '../model/types.ts'
 
 // Keyword matching is a demo aid, not a semantic assessment by an AI model.
 export function evaluateDemoAnswer(question: Question, input: string): Feedback {

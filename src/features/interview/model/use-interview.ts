@@ -1,6 +1,6 @@
 import { computed, onScopeDispose, ref } from 'vue'
-import { demoQuestions } from './demo-data.ts'
-import { requestDemoFeedback } from './demo-service.ts'
+import { demoQuestions } from '../demo/demo-data.ts'
+import { requestDemoFeedback } from '../demo/demo-service.ts'
 import { answerSchema } from './schemas.ts'
 import type { Feedback, SessionPhase } from './types.ts'
 

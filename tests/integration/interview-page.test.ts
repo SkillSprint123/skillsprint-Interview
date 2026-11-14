@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, test, jest } from '@jest/globals'
 import { nextTick } from 'vue'
 import type { NanoContext } from '@skillsprint/contracts'
-import { contractVersion, mount } from '../src/index'
-import { mountInterview } from '../src/app/mount'
+import { contractVersion, mount } from '../../src/index'
+import { mountInterview } from '../../src/app/mount'
 
 const context: NanoContext = {
   basePath: '/interview',
@@ -16,8 +16,18 @@ let headStyleCount: number
 
 beforeEach(() => {
   // Keep jsdom's own immediate DOM tasks real; control only application timeouts and time.
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  vi.setSystemTime(new Date(2026, 9, 24, 12))
+  jest.useFakeTimers({
+    doNotFake: [
+      'nextTick',
+      'queueMicrotask',
+      'setImmediate',
+      'clearImmediate',
+      'performance',
+      'requestAnimationFrame',
+      'cancelAnimationFrame',
+    ],
+  })
+  jest.setSystemTime(new Date(2026, 9, 24, 12))
   instances = []
   headStyleCount = document.head.querySelectorAll('style').length
 })
@@ -27,11 +37,11 @@ afterEach(async () => {
   try {
     await flushUi()
     // Flush pending DOM tasks, without advancing the interview or midnight timers.
-    await vi.advanceTimersByTimeAsync(0)
-    expect(vi.getTimerCount()).toBe(0)
+    await jest.advanceTimersByTimeAsync(0)
+    expect(jest.getTimerCount()).toBe(0)
     expect(document.head.querySelectorAll('style')).toHaveLength(headStyleCount)
   } finally {
-    vi.useRealTimers()
+    jest.useRealTimers()
     document.body.replaceChildren()
   }
 })
@@ -75,7 +85,7 @@ async function reviewAnswer(target: HTMLElement, answer = 'Функция сох
   enter(typeAnswer(target, answer))
   await flushUi()
   expect(target.querySelector('button')?.disabled).toBe(true)
-  await vi.advanceTimersByTimeAsync(650)
+  await jest.advanceTimersByTimeAsync(650)
   await flushUi()
   const title = target.querySelector<HTMLHeadingElement>('h3[tabindex="-1"]')!
   expect(title.textContent).toBe('Разбор твоего ответа')
@@ -92,7 +102,7 @@ describe('the mounted interview', () => {
     expect(target.textContent).not.toContain('Серия:')
     expect(target.textContent).not.toContain('Практикуйся в своём темпе.')
     expect(target.textContent).toContain('Ответы не отправляются на сервер.')
-    expect(vi.getTimerCount()).toBe(0)
+    expect(jest.getTimerCount()).toBe(0)
   })
 
   test('publishes the v1 contract and keeps shell content on repeated unmount', async () => {
@@ -113,7 +123,7 @@ describe('the mounted interview', () => {
     const host = document.createElement('div')
     expect(() => mount(host, { ...context, user: undefined } as unknown as NanoContext)).toThrow()
     expect(host.childElementCount).toBe(0)
-    expect(vi.getTimerCount()).toBe(0)
+    expect(jest.getTimerCount()).toBe(0)
   })
 
   test.each(['   ', 'x'.repeat(5001)])(
@@ -151,7 +161,7 @@ describe('the mounted interview', () => {
       enter(typeAnswer(target, 'Мой ответ'), options)
       await flushUi()
       expect(target.querySelector('button')?.disabled).toBe(true)
-      await vi.advanceTimersByTimeAsync(650)
+      await jest.advanceTimersByTimeAsync(650)
       expect(target.querySelector('[aria-keyshortcuts="Enter"]')).not.toBeNull()
     },
   )
@@ -164,7 +174,7 @@ describe('the mounted interview', () => {
     target
       .querySelector('form')!
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-    await vi.advanceTimersByTimeAsync(650)
+    await jest.advanceTimersByTimeAsync(650)
     expect(target.querySelectorAll('h3[tabindex="-1"]')).toHaveLength(1)
     const title = target.querySelector<HTMLElement>('h3[tabindex="-1"]')!
     enter(title)
@@ -231,7 +241,7 @@ describe('the mounted interview', () => {
     expect(input(second.target).value).toBe('')
     expect(second.target.querySelector('button')?.disabled).toBe(false)
     await first.instance.unmount()
-    await vi.advanceTimersByTimeAsync(1000)
+    await jest.advanceTimersByTimeAsync(1000)
     expect(first.target.childElementCount).toBe(0)
     expect(input(second.target).value).toBe('')
     await reviewAnswer(second.target)
@@ -243,12 +253,12 @@ describe('the mounted interview', () => {
 
 describe('the live header date', () => {
   test('changes at local midnight without reloading the interview', async () => {
-    vi.setSystemTime(new Date(2026, 9, 24, 23, 59, 59, 900))
+    jest.setSystemTime(new Date(2026, 9, 24, 23, 59, 59, 900))
     const { target } = render(undefined, true)
     typeAnswer(target, 'Черновик ответа')
     expect(target.textContent).toContain('Суббота, 24 октября')
     expect(target.textContent).toContain('Серия: —')
-    await vi.advanceTimersByTimeAsync(100)
+    await jest.advanceTimersByTimeAsync(100)
     await flushUi()
     expect(target.textContent).toContain('Воскресенье, 25 октября')
     expect(input(target).value).toBe('Черновик ответа')
@@ -256,19 +266,19 @@ describe('the live header date', () => {
 
   test('refreshes on tab return and removes listeners and timers on unmount', async () => {
     const { target, instance } = render(undefined, true)
-    expect(vi.getTimerCount()).toBe(1)
-    vi.setSystemTime(new Date(2026, 9, 26, 12))
+    expect(jest.getTimerCount()).toBe(1)
+    jest.setSystemTime(new Date(2026, 9, 26, 12))
     window.dispatchEvent(new Event('focus'))
     await flushUi()
     expect(target.textContent).toContain('Понедельник, 26 октября')
-    vi.setSystemTime(new Date(2026, 9, 27, 12))
+    jest.setSystemTime(new Date(2026, 9, 27, 12))
     document.dispatchEvent(new Event('visibilitychange'))
     await flushUi()
     expect(target.textContent).toContain('Вторник, 27 октября')
-    expect(vi.getTimerCount()).toBe(1)
+    expect(jest.getTimerCount()).toBe(1)
     await instance.unmount()
     window.dispatchEvent(new Event('focus'))
     document.dispatchEvent(new Event('visibilitychange'))
-    expect(vi.getTimerCount()).toBe(0)
+    expect(jest.getTimerCount()).toBe(0)
   })
 })

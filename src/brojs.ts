@@ -1,4 +1,4 @@
-import InterviewPage from './pages/interview/InterviewPage.vue'
+import InterviewPage from './features/interview/ui/InterviewPage.vue'
 import { mountInterview as mountNano } from './app/mount'
 
 // BroJS calls mount(component.default, element, { push }) and a separate unmount().

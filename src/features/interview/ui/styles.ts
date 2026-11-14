@@ -1,6 +1,6 @@
-import type { CssFunction } from '../../app/types'
-import { tokens as t } from '../../shared/styles/tokens'
-import { registerFonts } from '../../shared/styles/fonts'
+import type { CssFunction } from '../../../shared/styles/types'
+import { tokens as t } from '../../../shared/styles/tokens'
+import { registerFonts } from '../../../shared/styles/fonts'
 
 export function createStyles(css: CssFunction, standalone: boolean) {
   registerFonts(css)

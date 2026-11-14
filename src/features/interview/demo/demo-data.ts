@@ -1,4 +1,4 @@
-import { questionSchema } from './schemas.ts'
+import { questionSchema } from '../model/schemas.ts'
 
 export const demoQuestions = questionSchema
   .array()

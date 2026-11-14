@@ -2,8 +2,9 @@ import { createApp } from 'vue'
 import { css } from 'goober'
 import { assertNanoContext, nanoElementSchema } from '@skillsprint/contracts'
 import type { NanoContext, NanoInstance } from '@skillsprint/contracts'
-import InterviewPage from '../pages/interview/InterviewPage.vue'
-import { contextKey, cssKey } from './context'
+import InterviewPage from '../features/interview/ui/InterviewPage.vue'
+import { contextKey } from './context'
+import { cssKey } from '../shared/styles/context'
 
 export function mountInterview(
   element: HTMLElement,

@@ -137,6 +137,11 @@ export default defineConfig(({ mode }) => ({
     },
     overrides: [
       {
+        files: ['**/*.cjs'],
+        env: { node: true },
+        rules: { 'typescript/no-require-imports': 'off' },
+      },
+      {
         files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'],
         rules: {
           'constructor-super': 'off',
@@ -198,19 +203,6 @@ export default defineConfig(({ mode }) => ({
       '.vite-plus/**',
       '.vitest/**',
     ],
-  },
-  test: {
-    include: ['tests/**/*.test.ts'],
-    environment: 'jsdom',
-    restoreMocks: true,
-    coverage: {
-      provider: 'v8',
-      include: ['src/**/*.{ts,vue}'],
-      exclude: ['src/main.ts', 'src/**/*.d.ts', 'src/**/types.ts'],
-      reporter: ['text', 'html', 'lcov', 'json-summary'],
-      reportsDirectory: 'coverage',
-      thresholds: { statements: 90, branches: 80, functions: 90, lines: 90 },
-    },
   },
   plugins: lazyPlugins(() => [vue()]),
   base: './',

@@ -4,7 +4,7 @@ import latin600 from '@fontsource/inter/files/inter-latin-600-normal.woff2?url'
 import cyrillic400 from '@fontsource/inter/files/inter-cyrillic-400-normal.woff2?url'
 import cyrillic500 from '@fontsource/inter/files/inter-cyrillic-500-normal.woff2?url'
 import cyrillic600 from '@fontsource/inter/files/inter-cyrillic-600-normal.woff2?url'
-import type { CssFunction } from '../../app/types'
+import type { CssFunction } from './types'
 
 // Font faces live in the same owned style target as component rules.
 // The private family name avoids changing the shell's fonts.

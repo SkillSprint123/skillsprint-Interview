@@ -1,21 +1,21 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, expect, test, jest } from '@jest/globals'
 import { effectScope, type EffectScope } from 'vue'
-import { useInterview } from '../src/features/interview/use-interview'
-import * as service from '../src/features/interview/demo-service'
+import { useInterview } from '../../src/features/interview/model/use-interview'
+import * as service from '../../src/features/interview/demo/demo-service'
 
 let scopes: EffectScope[]
 
 beforeEach(() => {
-  vi.useFakeTimers()
+  jest.useFakeTimers()
   scopes = []
 })
 
 afterEach(async () => {
   for (const scope of scopes) scope.stop()
   await Promise.resolve()
-  expect(vi.getTimerCount()).toBe(0)
-  vi.restoreAllMocks()
-  vi.useRealTimers()
+  expect(jest.getTimerCount()).toBe(0)
+  jest.restoreAllMocks()
+  jest.useRealTimers()
 })
 
 function session() {
@@ -35,7 +35,7 @@ test('only feedback allows advancing, and duplicate submits do not create more r
   await interview.submit()
   expect(interview.phase.value).toBe('submitting')
   expect(interview.index.value).toBe(0)
-  await vi.advanceTimersByTimeAsync(650)
+  await jest.advanceTimersByTimeAsync(650)
   await pending
   await interview.submit()
   expect(interview.results.value).toHaveLength(1)
@@ -43,7 +43,7 @@ test('only feedback allows advancing, and duplicate submits do not create more r
 })
 
 test('a failed service preserves the draft and lets the user retry', async () => {
-  vi.spyOn(service, 'requestDemoFeedback').mockRejectedValueOnce(new Error('Service unavailable'))
+  jest.spyOn(service, 'requestDemoFeedback').mockRejectedValueOnce(new Error('Service unavailable'))
   const interview = session()
   interview.answer.value = 'Черновик, который нельзя потерять'
   await interview.submit()
@@ -52,7 +52,7 @@ test('a failed service preserves the draft and lets the user retry', async () =>
   expect(interview.answer.value).toBe('Черновик, который нельзя потерять')
   expect(interview.results.value).toHaveLength(0)
   const retry = interview.submit()
-  await vi.advanceTimersByTimeAsync(650)
+  await jest.advanceTimersByTimeAsync(650)
   await retry
   expect(interview.phase.value).toBe('feedback')
   expect(interview.error.value).toBe('')
@@ -61,7 +61,7 @@ test('a failed service preserves the draft and lets the user retry', async () =>
 test('restart cancels the old request without losing cancellation of a newer request', async () => {
   const signals: AbortSignal[] = []
   const request = service.requestDemoFeedback
-  vi.spyOn(service, 'requestDemoFeedback').mockImplementation((question, answer, signal) => {
+  jest.spyOn(service, 'requestDemoFeedback').mockImplementation((question, answer, signal) => {
     signals.push(signal)
     return request(question, answer, signal)
   })
@@ -85,7 +85,7 @@ test('a late successful response cannot update a disposed interview', async () =
   let resolve: (feedback: ReturnType<typeof service.evaluateDemoAnswer>) => void = () => {
     throw new Error('Request has not started')
   }
-  vi.spyOn(service, 'requestDemoFeedback').mockImplementation(
+  jest.spyOn(service, 'requestDemoFeedback').mockImplementation(
     () =>
       new Promise((done) => {
         resolve = done
