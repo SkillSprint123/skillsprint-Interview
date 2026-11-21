@@ -1,4 +1,4 @@
 import type { InjectionKey } from 'vue'
-import type { NanoContext } from '@skillsprint/contracts'
+import type { NanoContext as ModuleContext } from '@skillsprint/contracts'
 
-export const contextKey: InjectionKey<NanoContext> = Symbol('interview-context')
+export const contextKey: InjectionKey<ModuleContext> = Symbol('interview-context')

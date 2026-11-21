@@ -1,17 +1,24 @@
-import { assertNanoInstance, assertNanoModule } from '@skillsprint/contracts'
-import type { NanoContext, NanoInstance, NanoModule } from '@skillsprint/contracts'
-import * as nano from '../../src/index'
+import {
+  assertNanoInstance as assertModuleInstance,
+  assertNanoModule as assertModule,
+} from '@skillsprint/contracts'
+import type {
+  NanoContext as ModuleContext,
+  NanoInstance as ModuleInstance,
+  NanoModule as InterviewModule,
+} from '@skillsprint/contracts'
+import * as interview from '../../src/index'
 import { css } from 'goober'
 
 const fixture = document.querySelector<HTMLDivElement>('#fixture')!
 const result = document.querySelector<HTMLPreElement>('#result')!
-const context: NanoContext = {
+const context: ModuleContext = {
   basePath: '/interview',
   apiBaseUrl: '/api',
   user: null,
   navigate: () => {},
 }
-let preview: NanoInstance | undefined
+let preview: ModuleInstance | undefined
 
 function check(value: unknown, message: string) {
   if (!value) throw new Error(message)
@@ -84,21 +91,21 @@ async function checkKeyboardFlow(container: HTMLElement) {
   }
 }
 
-async function runLifecycle(module: NanoModule) {
+async function runLifecycle(module: InterviewModule) {
   await preview?.unmount()
   fixture.replaceChildren()
   const first = document.createElement('div')
   const second = document.createElement('div')
   fixture.append(first, second)
   const headStyles = document.head.querySelectorAll('style').length
-  const instances: NanoInstance[] = []
+  const instances: ModuleInstance[] = []
   try {
-    assertNanoModule(module)
+    assertModule(module)
     const a = await module.mount(first, context)
     const b = await module.mount(second, context)
     instances.push(a, b)
-    assertNanoInstance(a)
-    assertNanoInstance(b)
+    assertModuleInstance(a)
+    assertModuleInstance(b)
     check(first.querySelector('style')?.textContent, 'First mount must own nonempty styles')
     check(second.querySelector('style')?.textContent, 'Second mount must own nonempty styles')
     check(
@@ -166,7 +173,7 @@ async function runLifecycle(module: NanoModule) {
     await remounted.unmount()
     let rejected = false
     try {
-      await module.mount(first, { ...context, user: undefined } as unknown as NanoContext)
+      await module.mount(first, { ...context, user: undefined } as unknown as ModuleContext)
     } catch {
       rejected = true
     }
@@ -185,13 +192,13 @@ async function runLifecycle(module: NanoModule) {
 }
 
 document.querySelector('#run')!.addEventListener('click', () => {
-  void runLifecycle(nano)
+  void runLifecycle(interview)
 })
 document.querySelector('#production')!.addEventListener('click', async () => {
   try {
-    const entry = `/dist-nano/index.js?check=${Date.now()}`
-    const module: unknown = await import(/* @vite-ignore */ entry)
-    assertNanoModule(module)
+    await import('systemjs/dist/system.min.js')
+    const module = await window.System.import(`/dist/index.js?check=${Date.now()}`)
+    assertModule(module)
     await runLifecycle(module)
   } catch (error) {
     result.textContent = `FAIL: ${String(error)}`
@@ -206,7 +213,7 @@ async function showPreview(width: number) {
   styleHost.hidden = true
   fixture.append(styleHost, target)
   target.className = css.bind({ target: styleHost })({ width: `${width}px`, maxWidth: '100%' })
-  preview = nano.mount(target, context)
+  preview = interview.mount(target, context)
   result.textContent = `${width}px preview`
 }
 document.querySelector('#mobile')!.addEventListener('click', () => {

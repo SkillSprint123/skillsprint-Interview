@@ -1,8 +1,11 @@
-import type { NanoContext, NanoInstance } from '@skillsprint/contracts'
+import type {
+  NanoContext as ModuleContext,
+  NanoInstance as ModuleInstance,
+} from '@skillsprint/contracts'
 import { mountInterview } from './app/mount'
 
 export const contractVersion = 1 as const
 
-export function mount(element: HTMLElement, context: NanoContext): NanoInstance {
+export function mount(element: HTMLElement, context: ModuleContext): ModuleInstance {
   return mountInterview(element, context)
 }

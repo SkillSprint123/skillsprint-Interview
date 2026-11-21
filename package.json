@@ -18,12 +18,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --runInBand",
     "build": "npm run build:prod",
-    "build:prod": "npm run typecheck && vp build --mode brojs",
-    "build:brojs": "npm run build:prod",
-    "build:nano": "npm run typecheck && vp build",
-    "build:demo": "npm run typecheck && vp build --mode demo",
-    "preview": "vp preview --outDir dist-demo",
-    "verify": "npm run check && npm run build:prod && node scripts/check-brojs-build.mjs && npm run build:nano && npm run build:demo"
+    "build:prod": "npm run typecheck && vp build && node scripts/convert-to-systemjs.mjs",
+    "preview": "vp preview --port 5173 --strictPort",
+    "verify": "npm run check && npm run build:prod && node scripts/check-module-build.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
@@ -37,6 +34,7 @@
   },
   "devDependencies": {
     "@babel/core": "7.29.13",
+    "@babel/plugin-transform-modules-systemjs": "7.29.8",
     "@babel/preset-env": "7.29.7",
     "@babel/preset-typescript": "7.29.7",
     "@jest/globals": "30.5.2",
@@ -51,6 +49,7 @@
     "jest": "30.5.2",
     "jest-environment-jsdom": "30.5.2",
     "jsdom": "^30.1.3",
+    "systemjs": "6.15.1",
     "typescript": "~6.0.2",
     "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
     "vite-plus": "1.4.0",

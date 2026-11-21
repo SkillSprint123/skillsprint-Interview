@@ -1,18 +1,24 @@
 import { createApp } from 'vue'
 import { css } from 'goober'
-import { assertNanoContext, nanoElementSchema } from '@skillsprint/contracts'
-import type { NanoContext, NanoInstance } from '@skillsprint/contracts'
+import {
+  assertNanoContext as assertModuleContext,
+  nanoElementSchema as moduleElementSchema,
+} from '@skillsprint/contracts'
+import type {
+  NanoContext as ModuleContext,
+  NanoInstance as ModuleInstance,
+} from '@skillsprint/contracts'
 import InterviewPage from '../features/interview/ui/InterviewPage.vue'
 import { contextKey } from './context'
 import { cssKey } from '../shared/styles/context'
 
 export function mountInterview(
   element: HTMLElement,
-  context: NanoContext,
+  context: ModuleContext,
   standalone = false,
-): NanoInstance {
-  nanoElementSchema.parse(element)
-  assertNanoContext(context)
+): ModuleInstance {
+  moduleElementSchema.parse(element)
+  assertModuleContext(context)
 
   const document = element.ownerDocument
   const scope = document.createElement('div')

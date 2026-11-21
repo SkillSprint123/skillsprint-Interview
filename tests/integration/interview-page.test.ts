@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, jest } from '@jest/globals'
 import { nextTick } from 'vue'
-import type { NanoContext } from '@skillsprint/contracts'
+import type { NanoContext as ModuleContext } from '@skillsprint/contracts'
 import { contractVersion, mount } from '../../src/index'
 import { mountInterview } from '../../src/app/mount'
 
-const context: NanoContext = {
+const context: ModuleContext = {
   basePath: '/interview',
   apiBaseUrl: '/api',
   user: null,
@@ -94,7 +94,7 @@ async function reviewAnswer(target: HTMLElement, answer = 'Функция сох
 }
 
 describe('the mounted interview', () => {
-  test('leaves shell chrome to the host when mounted as a nano', () => {
+  test('leaves shell chrome to the host when mounted as a module', () => {
     const { target } = render()
     expect(target.querySelector('main')).toBeNull()
     expect(target.querySelectorAll('h1')).toHaveLength(1)
@@ -121,7 +121,7 @@ describe('the mounted interview', () => {
 
   test('rejects an invalid context before changing the host', () => {
     const host = document.createElement('div')
-    expect(() => mount(host, { ...context, user: undefined } as unknown as NanoContext)).toThrow()
+    expect(() => mount(host, { ...context, user: undefined } as unknown as ModuleContext)).toThrow()
     expect(host.childElementCount).toBe(0)
     expect(jest.getTimerCount()).toBe(0)
   })
