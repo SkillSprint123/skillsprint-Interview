@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, jest } from '@jest/globals'
 import { nextTick } from 'vue'
 import type { NanoContext as ModuleContext } from '@skillsprint/contracts'
-import { contractVersion, mount } from '../../src/index'
-import { mountInterview } from '../../src/app/mount'
+import standApp, { contractVersion, mount, unmount } from '../../src/index'
 
 const context: ModuleContext = {
   basePath: '/interview',
@@ -35,6 +34,7 @@ beforeEach(() => {
 afterEach(async () => {
   for (const instance of instances) await instance.unmount()
   try {
+    await unmount()
     await flushUi()
     // Flush pending DOM tasks, without advancing the interview or midnight timers.
     await jest.advanceTimersByTimeAsync(0)
@@ -52,11 +52,18 @@ async function flushUi() {
   await nextTick()
 }
 
-function render(target = document.createElement('div'), standalone = false) {
+function render(target = document.createElement('div')) {
   document.body.append(target)
-  const instance = standalone ? mountInterview(target, context, true) : mount(target, context)
+  const instance = mount(target, context)
   instances.push(instance)
   return { target, instance }
+}
+
+function renderStandalone() {
+  const target = document.createElement('div')
+  document.body.append(target)
+  mount(standApp.default, target, { push: context.navigate })
+  return target
 }
 
 function input(target: HTMLElement) {
@@ -254,7 +261,7 @@ describe('the mounted interview', () => {
 describe('the live header date', () => {
   test('changes at local midnight without reloading the interview', async () => {
     jest.setSystemTime(new Date(2026, 9, 24, 23, 59, 59, 900))
-    const { target } = render(undefined, true)
+    const target = renderStandalone()
     typeAnswer(target, 'Черновик ответа')
     expect(target.textContent).toContain('Суббота, 24 октября')
     expect(target.textContent).toContain('Серия: —')
@@ -265,7 +272,7 @@ describe('the live header date', () => {
   })
 
   test('refreshes on tab return and removes listeners and timers on unmount', async () => {
-    const { target, instance } = render(undefined, true)
+    const target = renderStandalone()
     expect(jest.getTimerCount()).toBe(1)
     jest.setSystemTime(new Date(2026, 9, 26, 12))
     window.dispatchEvent(new Event('focus'))
@@ -276,7 +283,7 @@ describe('the live header date', () => {
     await flushUi()
     expect(target.textContent).toContain('Вторник, 27 октября')
     expect(jest.getTimerCount()).toBe(1)
-    await instance.unmount()
+    await unmount()
     window.dispatchEvent(new Event('focus'))
     document.dispatchEvent(new Event('visibilitychange'))
     expect(jest.getTimerCount()).toBe(0)

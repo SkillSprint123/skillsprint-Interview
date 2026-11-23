@@ -38,6 +38,8 @@ INTERVIEW_URL=http://localhost:5173/index.js npm start
 
 Корень загружает `dist/index.js` в формате `System.register` при открытии раздела. Модуль экспортирует `contractVersion = 1` и `mount(element, context)` по контракту `@skillsprint/contracts`. При уходе корень вызывает возвращённый `unmount()`, который отключает Vue и очищает DOM и стили Goober в контейнере.
 
+При открытии отдельного стенда BroJS запускает тот же `index.js` через `mount(component, element, { push })` и выгружает его через экспорт `unmount()`.
+
 Публикуйте каталог `dist/` отдельно от корня, сохраняя структуру файлов. Текущая сборка включает Vue, стили и шрифты в `index.js`. Укажите URL опубликованного входного файла в `skillsprint.module.interview`. Для другого origin настройте CORS на статическом хосте и разрешите загрузку в CSP оболочки.
 
 Контракты API описаны в [документации бэкенда](docs/backend.md) и [API активности](docs/activity-api.md).
