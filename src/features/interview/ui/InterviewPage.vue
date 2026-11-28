@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { inject, nextTick, ref, useId, watch } from 'vue'
+import { computed, inject, nextTick, ref, unref, useId, watch } from 'vue'
 import { Flame, Send, Sparkles } from '@lucide/vue'
 import { cssKey } from '../../../shared/styles/context'
+import { contextKey } from '../../../app/context'
+import { useServerInterview } from '../model/use-server-interview'
+import { goalInputSchema } from '../model/schemas'
 import { useInterview } from '../model/use-interview'
 import { useCurrentDate } from '../../../shared/composables/use-current-date'
 import { createStyles } from './styles'
@@ -14,19 +17,35 @@ const css = inject(cssKey)
 if (!css) throw new Error('Interview styles must be provided by mount')
 const s = createStyles(css, props.standalone)
 const today = props.standalone ? useCurrentDate().today : ''
-const {
-  phase,
-  index,
-  answer,
-  error,
-  results,
-  question,
-  feedback,
-  submit,
-  next,
-  restart,
-  questions,
-} = useInterview()
+const context = inject(contextKey)
+const remote =
+  !props.standalone && context?.apiBaseUrl === '/api/go'
+    ? useServerInterview(context.apiBaseUrl)
+    : undefined
+const interview = remote ?? useInterview()
+const { phase, index, answer, error, results, question, feedback, submit, next, restart } =
+  interview
+const questions = computed(() => unref(interview.questions))
+const session = computed(() => remote?.session.value)
+const score = computed(() => session.value?.questions[index.value]?.score ?? null)
+const roleNames = { frontend: 'Frontend', backend: 'Backend', fullstack: 'Fullstack' }
+const levelNames = { junior: 'Junior', middle: 'Middle', senior: 'Senior' }
+const goal = ref({
+  role: 'frontend',
+  current_level: 'junior',
+  target_level: 'middle',
+  interview_date: '',
+  daily_minutes: 45,
+})
+
+function saveGoal() {
+  const parsed = goalInputSchema.safeParse(goal.value)
+  if (!parsed.success) {
+    error.value = 'Проверь дату и время подготовки.'
+    return
+  }
+  void remote?.saveGoal(parsed.data)
+}
 const input = ref<HTMLTextAreaElement>()
 const feedbackTitle = ref<HTMLHeadingElement>()
 const reportTitle = ref<HTMLHeadingElement>()
@@ -116,21 +135,99 @@ function handlePageKeydown(event: KeyboardEvent) {
         <p>Репетируй в спокойном темпе. Уверенность придёт с практикой.</p>
       </header>
 
-      <section :class="s.card" aria-label="Демонстрационное AI-собеседование">
+      <section
+        :class="s.card"
+        :aria-label="remote ? 'Собеседование' : 'Демонстрационное AI-собеседование'"
+      >
         <div :class="s.interviewer">
           <div :class="s.symbol">
             <Sparkles :size="18" :class="s.icon" aria-hidden="true" />
           </div>
           <div :class="s.role">
             <h2>Твой AI-интервьюер</h2>
-            <p>Frontend · Junior → Middle</p>
+            <p v-if="session">
+              {{ roleNames[session.role] }} · {{ levelNames[session.current_level] }} →
+              {{ levelNames[session.target_level] }}
+            </p>
+            <p v-else-if="!remote">Frontend · Junior → Middle</p>
           </div>
-          <span :class="s.badge">Демосессия</span>
+          <span v-if="!remote || session" :class="s.badge">{{
+            session?.mode === 'gigachat' ? 'GigaChat' : 'Демосессия'
+          }}</span>
         </div>
 
-        <template v-if="phase !== 'complete'">
+        <div v-if="phase === 'loading'" :class="s.setup" role="status">Загружаем интервью…</div>
+        <form
+          v-else-if="phase === 'goal' || phase === 'saving-goal'"
+          :class="s.setup"
+          @submit.prevent="saveGoal"
+        >
+          <h3>Цель подготовки</h3>
+          <fieldset :class="s.goalFields" :disabled="phase === 'saving-goal'">
+            <label>
+              Направление
+              <select v-model="goal.role">
+                <option v-for="(label, value) in roleNames" :key="value" :value="value">
+                  {{ label }}
+                </option>
+              </select>
+            </label>
+            <label>
+              Текущий уровень
+              <select v-model="goal.current_level">
+                <option v-for="(label, value) in levelNames" :key="value" :value="value">
+                  {{ label }}
+                </option>
+              </select>
+            </label>
+            <label>
+              Целевой уровень
+              <select v-model="goal.target_level">
+                <option v-for="(label, value) in levelNames" :key="value" :value="value">
+                  {{ label }}
+                </option>
+              </select>
+            </label>
+            <label>
+              Дата собеседования
+              <input v-model="goal.interview_date" type="date" required />
+            </label>
+            <label>
+              Минут в день
+              <input v-model.number="goal.daily_minutes" type="number" min="5" max="480" required />
+            </label>
+          </fieldset>
+          <p v-if="error" :class="s.error" role="alert">{{ error }}</p>
+          <button :class="s.primary" type="submit" :disabled="phase === 'saving-goal'">
+            Сохранить цель
+          </button>
+        </form>
+        <div
+          v-else-if="phase === 'ready' || phase === 'unavailable' || phase === 'syncing'"
+          :class="s.setup"
+        >
+          <p v-if="error" :class="s.error" role="alert">{{ error }}</p>
+          <button v-if="phase === 'ready'" :class="s.primary" type="button" @click="restart">
+            Начать интервью
+          </button>
+          <button
+            v-else-if="phase === 'syncing'"
+            :class="s.primary"
+            type="button"
+            @click="remote?.retrySync()"
+          >
+            Проверить отправку ответа
+          </button>
+          <button v-else :class="s.primary" type="button" @click="remote?.restore()">
+            Повторить загрузку
+          </button>
+        </div>
+        <template v-else-if="phase !== 'complete' && question">
           <div :class="s.question" aria-live="polite" aria-atomic="true">
-            <p>Вопрос {{ index + 1 }} из {{ questions.length }} · {{ question.topic }}</p>
+            <p>
+              Вопрос {{ index + 1 }} из {{ questions.length
+              }}<template v-if="question.topic"> · {{ question.topic }}</template>
+            </p>
             <p>{{ question.prompt }}</p>
           </div>
 
@@ -142,10 +239,10 @@ function handlePageKeydown(event: KeyboardEvent) {
               v-model="answer"
               :class="s.textarea"
               placeholder="Расскажи своими словами и приведи пример."
-              maxlength="5000"
+              :maxlength="remote ? undefined : 5000"
               :readonly="phase !== 'answering'"
               :aria-invalid="Boolean(error)"
-              :aria-describedby="`${answerHintId} ${error ? errorId : demoNoteId}`"
+              :aria-describedby="`${answerHintId} ${error ? errorId : remote ? '' : demoNoteId}`"
               @keydown.enter="handleAnswerKeydown"
               @input="error = ''"
             />
@@ -180,27 +277,33 @@ function handlePageKeydown(event: KeyboardEvent) {
             :aria-labelledby="feedbackTitleId"
           >
             <h3 :id="feedbackTitleId" ref="feedbackTitle" tabindex="-1">Разбор твоего ответа</h3>
-            <p :class="s.muted">
-              Сравни свой ответ с примером и проверь, какие темы стоит раскрыть подробнее. Разбор
-              ищет ключевые слова: их наличие не подтверждает правильность объяснения, а отсутствие
-              не означает ошибку.
-            </p>
-            <div v-if="feedback.mentioned.length" :class="s.feedbackBlock">
-              <strong>Упомянутые темы</strong>
-              <ul>
-                <li v-for="item in feedback.mentioned" :key="item">{{ item }}</li>
-              </ul>
-            </div>
-            <div v-if="feedback.toReview.length" :class="s.feedbackBlock">
-              <strong>Проверь раскрытие этих тем</strong>
-              <ul>
-                <li v-for="item in feedback.toReview" :key="item">{{ item }}</li>
-              </ul>
-            </div>
-            <details :class="s.reference" open>
-              <summary>Пример объяснения</summary>
-              <p>{{ feedback.reference }}</p>
-            </details>
+            <template v-if="remote">
+              <p v-if="score !== null">Оценка · {{ score }} из 100</p>
+              <p :class="s.serverFeedback">{{ feedback.reference }}</p>
+            </template>
+            <template v-else>
+              <p :class="s.muted">
+                Сравни свой ответ с примером и проверь, какие темы стоит раскрыть подробнее. Разбор
+                ищет ключевые слова: их наличие не подтверждает правильность объяснения, а
+                отсутствие не означает ошибку.
+              </p>
+              <div v-if="feedback.mentioned.length" :class="s.feedbackBlock">
+                <strong>Упомянутые темы</strong>
+                <ul>
+                  <li v-for="item in feedback.mentioned" :key="item">{{ item }}</li>
+                </ul>
+              </div>
+              <div v-if="feedback.toReview.length" :class="s.feedbackBlock">
+                <strong>Проверь раскрытие этих тем</strong>
+                <ul>
+                  <li v-for="item in feedback.toReview" :key="item">{{ item }}</li>
+                </ul>
+              </div>
+              <details :class="s.reference" open>
+                <summary>Пример объяснения</summary>
+                <p>{{ feedback.reference }}</p>
+              </details>
+            </template>
             <div :class="s.actions">
               <span :class="s.muted">Вопрос {{ index + 1 }} из {{ questions.length }}</span>
               <button type="button" :class="s.primary" aria-keyshortcuts="Enter" @click="next">
@@ -210,26 +313,56 @@ function handlePageKeydown(event: KeyboardEvent) {
           </section>
         </template>
 
-        <section v-else :class="s.report" :aria-labelledby="reportTitleId">
+        <section
+          v-else-if="phase === 'complete'"
+          :class="s.report"
+          :aria-labelledby="reportTitleId"
+        >
           <h2 :id="reportTitleId" ref="reportTitle" tabindex="-1">Итоги тренировки</h2>
-          <p>Ты ответил на {{ results.length }} вопроса. Выбери темы для следующей тренировки.</p>
-          <p :class="s.muted">Результаты доступны до перезагрузки или выхода из раздела.</p>
+          <template v-if="remote">
+            <p>Отвечено · {{ results.length }} из {{ questions.length }}</p>
+            <p v-if="session?.average_score != null">
+              Средняя оценка ·
+              {{
+                new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(
+                  session.average_score,
+                )
+              }}
+              из 100
+            </p>
+            <p v-else>Демо-интервью пройдено без AI-оценки.</p>
+          </template>
+          <template v-else>
+            <p>Ты ответил на {{ results.length }} вопроса. Выбери темы для следующей тренировки.</p>
+            <p :class="s.muted">Результаты доступны до перезагрузки или выхода из раздела.</p>
+          </template>
+          <p v-if="error" :class="s.error" role="alert">{{ error }}</p>
           <article
             v-for="(result, resultIndex) in results"
             :key="result.questionId"
             :class="s.reportItem"
           >
-            <h3>{{ resultIndex + 1 }}. {{ questions[resultIndex]?.topic }}</h3>
+            <h3>
+              {{ resultIndex + 1 }}.
+              {{ remote ? questions[resultIndex]?.prompt : questions[resultIndex]?.topic }}
+            </h3>
             <details :class="s.reference">
-              <summary>Сравнить твой ответ с примером</summary>
+              <summary>
+                {{ remote ? 'Твой ответ и разбор' : 'Сравнить твой ответ с примером' }}
+              </summary>
               <blockquote>{{ result.answer }}</blockquote>
-              <p>{{ result.reference }}</p>
+              <p :class="remote ? s.serverFeedback : undefined">{{ result.reference }}</p>
             </details>
-            <p v-if="result.toReview.length">
-              <strong>Проверь раскрытие этих тем:</strong> {{ result.toReview.join(', ') }}.
+            <p v-if="remote && session?.questions[resultIndex]?.score != null">
+              Оценка · {{ session.questions[resultIndex]?.score }} из 100
             </p>
-            <p v-else>Найдены ключевые слова всех тем. Проверь объяснение по примеру.</p>
-            <p><strong>Попробуй на практике:</strong> {{ questions[resultIndex]?.task }}</p>
+            <template v-if="!remote">
+              <p v-if="result.toReview.length">
+                <strong>Проверь раскрытие этих тем:</strong> {{ result.toReview.join(', ') }}.
+              </p>
+              <p v-else>Найдены ключевые слова всех тем. Проверь объяснение по примеру.</p>
+              <p><strong>Попробуй на практике:</strong> {{ questions[resultIndex]?.task }}</p>
+            </template>
           </article>
           <div :class="s.actions">
             <span :class="s.muted">Практика важнее идеального ответа</span>
@@ -240,7 +373,7 @@ function handlePageKeydown(event: KeyboardEvent) {
 
       <div :class="s.footer">
         <p v-if="standalone">Практикуйся в своём темпе.</p>
-        <p :id="demoNoteId" :class="s.demoNote">
+        <p v-if="!remote" :id="demoNoteId" :class="s.demoNote">
           Демосессия: 3 подготовленных вопроса и разбор по ключевым словам, без оценки нейросетью.
           Ответы не отправляются на сервер.
         </p>

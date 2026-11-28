@@ -289,3 +289,247 @@ describe('the live header date', () => {
     expect(jest.getTimerCount()).toBe(0)
   })
 })
+
+const firstServerQuestion = {
+  id: 11,
+  position: 1,
+  text: 'Первый вопрос',
+  answer: null,
+  feedback: null,
+  score: null,
+}
+const secondServerQuestion = {
+  id: 12,
+  position: 2,
+  text: 'Второй вопрос',
+  answer: null,
+  feedback: null,
+  score: null,
+}
+const serverSession = {
+  id: 9,
+  role: 'backend',
+  current_level: 'junior',
+  target_level: 'middle',
+  mode: 'gigachat',
+  status: 'active',
+  current_position: 1,
+  average_score: null,
+  questions: [firstServerQuestion, secondServerQuestion],
+}
+
+const serverContext = {
+  ...context,
+  apiBaseUrl: '/api/go',
+  user: { id: '1', displayName: 'Участник' },
+}
+const response = (body: unknown, status = 200) =>
+  ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  }) as Response
+
+function mockServer() {
+  const original = globalThis.fetch
+  const fetch = jest.fn<typeof globalThis.fetch>()
+  globalThis.fetch = fetch
+  return {
+    fetch,
+    restore: () => {
+      globalThis.fetch = original
+    },
+  }
+}
+
+function mountServer(target = document.createElement('div')) {
+  document.body.append(target)
+  const instance = mount(target, serverContext)
+  instances.push(instance)
+  return { instance, target }
+}
+
+function click(target: HTMLElement, label: string) {
+  const button = Array.from(target.querySelectorAll('button')).find(
+    (candidate) => candidate.textContent?.trim() === label,
+  )
+  expect(button).toBeDefined()
+  button?.click()
+  return jest.advanceTimersByTimeAsync(0)
+}
+
+test('recovers an accepted answer after a network failure and restores the next question on mount', async () => {
+  const accepted = {
+    ...serverSession,
+    current_position: 2,
+    questions: [
+      { ...firstServerQuestion, answer: 'Мой ответ', feedback: 'Ответ разобран', score: 0 },
+      secondServerQuestion,
+    ],
+  }
+  const { fetch, restore } = mockServer()
+  fetch
+    .mockResolvedValueOnce(response(serverSession))
+    .mockRejectedValueOnce(new TypeError('Network failure'))
+    .mockResolvedValueOnce(response(accepted))
+    .mockResolvedValueOnce(response(accepted))
+  try {
+    const { instance, target } = mountServer()
+    await jest.advanceTimersByTimeAsync(0)
+    expect(target.textContent).toContain('Backend · Junior → Middle')
+    enter(typeAnswer(target, 'Мой ответ'))
+    await jest.advanceTimersByTimeAsync(0)
+    expect(fetch.mock.calls.map(([path]) => path)).toEqual([
+      '/api/go/interview-sessions/latest',
+      '/api/go/interview-sessions/9/answers',
+      '/api/go/interview-sessions/9',
+    ])
+    expect(fetch.mock.calls[1]?.[1]).toMatchObject({
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-SkillSprint-Request': '1' },
+      body: JSON.stringify({ question_id: 11, answer: 'Мой ответ' }),
+    })
+    expect(target.textContent).toContain('Ответ разобран')
+    expect(target.textContent).toContain('Оценка · 0 из 100')
+    await instance.unmount()
+
+    mountServer(target)
+    await jest.advanceTimersByTimeAsync(0)
+    expect(fetch.mock.calls[3]?.[0]).toBe('/api/go/interview-sessions/latest')
+    expect(target.textContent).toContain('Второй вопрос')
+    expect(input(target).value).toBe('')
+  } finally {
+    restore()
+  }
+})
+
+test('saves the required goal, completes server demo without a score, and starts a new session', async () => {
+  const demo = { ...serverSession, mode: 'demo', questions: [firstServerQuestion] }
+  const completed = {
+    ...demo,
+    status: 'completed',
+    current_position: 0,
+    questions: [{ ...firstServerQuestion, answer: 'Мой ответ', feedback: 'Ответ сохранён' }],
+  }
+  const { fetch, restore } = mockServer()
+  fetch
+    .mockResolvedValueOnce(response(null, 404))
+    .mockResolvedValueOnce(response(null, 409))
+    .mockResolvedValueOnce(response(null, 400))
+    .mockResolvedValueOnce({ ok: true, status: 204 } as Response)
+    .mockResolvedValueOnce(response(demo, 201))
+    .mockResolvedValueOnce(response(completed))
+    .mockResolvedValueOnce(response({ ...demo, id: 10 }, 201))
+  try {
+    const { target } = mountServer()
+    await jest.advanceTimersByTimeAsync(0)
+    await click(target, 'Начать интервью')
+    expect(target.textContent).toContain('Цель подготовки')
+    const date = target.querySelector<HTMLInputElement>('input[type=date]')!
+    date.form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    expect(fetch).toHaveBeenCalledTimes(2)
+    date.value = '2099-01-01'
+    date.dispatchEvent(new Event('input', { bubbles: true }))
+    await click(target, 'Сохранить цель')
+    expect(target.textContent).toContain('Проверь поля формы')
+    await click(target, 'Сохранить цель')
+    expect(fetch.mock.calls[3]?.[0]).toBe('/api/go/goal')
+    await click(target, 'Начать интервью')
+    enter(input(target))
+    await flushUi()
+    expect(target.textContent).toContain('Напиши ответ')
+    enter(typeAnswer(target, 'Мой ответ'))
+    await jest.advanceTimersByTimeAsync(0)
+    expect(target.textContent).toContain('Ответ сохранён')
+    expect(target.textContent).not.toContain('Оценка ·')
+    await click(target, 'Посмотреть итог')
+    expect(target.textContent).toContain('Демо-интервью пройдено без AI-оценки')
+    await click(target, 'Пройти ещё раз')
+    expect(input(target).value).toBe('')
+  } finally {
+    restore()
+  }
+})
+
+test('retries a read after provider failure and keeps the draft if no answer was stored', async () => {
+  const { fetch, restore } = mockServer()
+  fetch
+    .mockResolvedValueOnce(response(null, 401))
+    .mockResolvedValueOnce(response(serverSession))
+    .mockResolvedValueOnce(response(null, 503))
+    .mockResolvedValueOnce(response(null, 504))
+    .mockResolvedValueOnce(response(serverSession))
+    .mockResolvedValueOnce(response(null, 400))
+  try {
+    const { target } = mountServer()
+    await jest.advanceTimersByTimeAsync(0)
+    expect(target.textContent).toContain('Вход истёк')
+    await click(target, 'Повторить загрузку')
+    enter(typeAnswer(target, 'Черновик'))
+    await jest.advanceTimersByTimeAsync(0)
+    expect(target.textContent).toContain('Сервер не успел ответить')
+    await click(target, 'Проверить отправку ответа')
+    expect(input(target).value).toBe('Черновик')
+    expect(target.textContent).toContain('Сервис AI временно недоступен')
+    enter(input(target))
+    await jest.advanceTimersByTimeAsync(0)
+    expect(input(target).value).toBe('Черновик')
+    expect(target.textContent).toContain('Проверь поля формы')
+  } finally {
+    restore()
+  }
+})
+
+test('uses the latest session after a timeout on start and can leave a missing session', async () => {
+  const { fetch, restore } = mockServer()
+  fetch
+    .mockResolvedValueOnce(response(null, 404))
+    .mockResolvedValueOnce(response(null, 504))
+    .mockResolvedValueOnce(response(serverSession))
+    .mockResolvedValueOnce(response(null, 409))
+    .mockResolvedValueOnce(response(null, 404))
+    .mockResolvedValueOnce(response(null, 404))
+  try {
+    const { target } = mountServer()
+    await jest.advanceTimersByTimeAsync(0)
+    await click(target, 'Начать интервью')
+    expect(target.textContent).toContain('Первый вопрос')
+    expect(fetch.mock.calls[2]?.[0]).toBe('/api/go/interview-sessions/latest')
+    enter(typeAnswer(target, 'Черновик'))
+    await jest.advanceTimersByTimeAsync(0)
+    expect(target.textContent).toContain('Сессия недоступна')
+    await click(target, 'Повторить загрузку')
+    expect(target.textContent).toContain('Начать интервью')
+  } finally {
+    restore()
+  }
+})
+
+test('shows server and invalid response errors and can retry loading the interview', async () => {
+  const { fetch, restore } = mockServer()
+  const invalidJson = response(null)
+  invalidJson.json = async () => {
+    throw new SyntaxError('Expected JSON')
+  }
+  fetch
+    .mockResolvedValueOnce(response(null, 500))
+    .mockResolvedValueOnce(invalidJson)
+    .mockResolvedValueOnce(response({ ...serverSession, current_position: 0 }))
+    .mockResolvedValueOnce(response(serverSession))
+  try {
+    const { target } = mountServer()
+    await jest.advanceTimersByTimeAsync(0)
+    expect(target.textContent).toContain('Сервер не смог обработать запрос')
+
+    await click(target, 'Повторить загрузку')
+    expect(target.textContent).toContain('Сервер прислал данные в неожиданном формате')
+    await click(target, 'Повторить загрузку')
+    expect(target.textContent).toContain('Сервер прислал данные в неожиданном формате')
+
+    await click(target, 'Повторить загрузку')
+    expect(target.textContent).toContain('Первый вопрос')
+  } finally {
+    restore()
+  }
+})
